@@ -12,13 +12,32 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+
+// GHOSTLIGHT entry check: before handing anything in, confirm the staged
+// screenshots shots.json lists are really there and inside the scorer's
+// 256 KiB cap, and log what is being submitted. This runs before any file
+// is copied, so a missing or oversized frame fails the run instead of
+// shipping a broken entry; the cap matches the screenshots cap passed to
+// buildDossier below.
+const SHOT_MAX_BYTES = 262144;
+const shotList = JSON.parse(readFileSync(join(here, 'shots.json'), 'utf8'));
+let shotTotal = 0;
+for (const shot of shotList) {
+  const shotPath = join(here, 'screenshots', shot.name);
+  if (!existsSync(shotPath)) throw new Error(`missing staged screenshot: ${shot.name}`);
+  const shotBytes = statSync(shotPath).size;
+  if (shotBytes > SHOT_MAX_BYTES) throw new Error(`staged screenshot over cap: ${shot.name} (${shotBytes} bytes)`);
+  shotTotal += shotBytes;
+  console.log(`shot ${shot.name}: ${shotBytes} bytes`);
+}
+console.log(`shots total: ${shotList.length} files, ${shotTotal} bytes`);
 
 mkdirSync(out, { recursive: true });
 cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
