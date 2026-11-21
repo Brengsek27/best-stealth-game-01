@@ -22,24 +22,26 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-// GHOSTLIGHT entry check: before handing anything in, confirm the staged
-// screenshots shots.json lists are really there and inside the scorer's
-// 256 KiB cap, and log what is being submitted. This runs before any file
-// is copied, so a missing or oversized frame fails the run instead of
-// shipping a broken entry; the cap matches the screenshots cap passed to
-// buildDossier below.
-const SCREENSCREENSHOT_MAX_BYTES = 262144;
-const shotList = JSON.parse(readFileSync(join(here, 'shots.json'), 'utf8'));
-let shotTotal = 0;
-for (const shot of shotList) {
-  const shotPath = join(here, 'screenshots', shot.name);
-  if (!existsSync(shotPath)) throw new Error(`missing staged screenshot: ${shot.name}`);
-  const shotBytes = statSync(shotPath).size;
-  if (shotBytes > SCREENSHOT_MAX_BYTES) throw new Error(`staged screenshot over cap: ${shot.name} (${shotBytes} bytes)`);
-  shotTotal += shotBytes;
-  console.log(`shot ${shot.name}: ${shotBytes} bytes`);
+// Validate staged screenshots and verify size limits
+const shotMetaList = JSON.parse(readFileSync(join(here, 'shots.json'), 'utf-8'));
+let cumulativeShotBytes = 0;
+for (const item of shotMetaList) {
+  const currentPath = join(here, 'screenshots', item.name);
+  if (!existsSync(currentPath)) {
+    throw new Error(`Missing screenshot file: ${item.name}`);
+  }
+  const meta = statSync(currentPath);
+  if (meta.size > 262144) {
+    throw new Error(`Screenshot ${item.name} exceeds 256KB cap (${meta.size} bytes)`);
+  }
+  cumulativeShotBytes += meta.size;
+  console.log(`[screenshot] ${item.name}: ${meta.size} bytes`);
 }
-console.log(`shots total: ${shotList.length} files, ${shotTotal} bytes`);
+console.log(`shots total: ${cumulativeShotBytes} bytes across ${shotMetaList.length} files`);
+
+
+
+
 
 mkdirSync(out, { recursive: true });
 cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
