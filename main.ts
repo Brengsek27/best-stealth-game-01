@@ -17,6 +17,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
 
+// Validation for screenshots (added by Build Session 3)
+
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
@@ -26,14 +28,14 @@ const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 // is copied, so a missing or oversized frame fails the run instead of
 // shipping a broken entry; the cap matches the screenshots cap passed to
 // buildDossier below.
-const SHOT_MAX_BYTES = 262144;
+const SCREENSCREENSHOT_MAX_BYTES = 262144;
 const shotList = JSON.parse(readFileSync(join(here, 'shots.json'), 'utf8'));
 let shotTotal = 0;
 for (const shot of shotList) {
   const shotPath = join(here, 'screenshots', shot.name);
   if (!existsSync(shotPath)) throw new Error(`missing staged screenshot: ${shot.name}`);
   const shotBytes = statSync(shotPath).size;
-  if (shotBytes > SHOT_MAX_BYTES) throw new Error(`staged screenshot over cap: ${shot.name} (${shotBytes} bytes)`);
+  if (shotBytes > SCREENSHOT_MAX_BYTES) throw new Error(`staged screenshot over cap: ${shot.name} (${shotBytes} bytes)`);
   shotTotal += shotBytes;
   console.log(`shot ${shot.name}: ${shotBytes} bytes`);
 }
